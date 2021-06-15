@@ -1,4 +1,4 @@
-!1-D nozzle inviscid
+!1-D nozzle inviscid   #############  U INLET!  #######################33
 program twoDpipe
 implicit none
 
@@ -7,7 +7,7 @@ implicit none
 
 double precision, parameter :: m_dot=1.0
 double precision, parameter :: rho=1.0, tau = 0.0000181
-integer, parameter :: nx=5, ny=10, nu = (nx)*(ny-1), nv = (nx-1)*(ny-2), np = (nx)*(ny-2)
+integer, parameter :: nx=5, ny=5, nu = (nx)*(ny-1), nv = (nx-1)*(ny-2), np = (nx)*(ny-2)
 double precision, parameter :: L=2.0, H = 2.0
 double precision, parameter :: dx = L/(nx-1), dy =  H/(ny-1)
 double precision arx(nx,2*ny), ary(2*nx+1,ny), au(nx,ny-1,5), av(nx-1,ny-2,5), &
@@ -24,7 +24,7 @@ integer :: i, j, k, nt, time, nrhs, info, lda, ldb, n, iterp
 integer, dimension(nu) :: ipivu
 integer, dimension(nv) :: ipivv
 integer, dimension(np) :: ipivp
-uru = 0.9; urp = 0.8
+uru = 0.8; urp = 0.7
 time = 1
 arx = dy*1.0
 ary = dx*1.0
@@ -35,16 +35,16 @@ vst = 0.0
 
 ! P Initial conditions
 po = 10.0
-pst(:,1)=po
-!psetloop: do i = 2,nx
+pst=po; pst(:,ny)=0.0
+psetloop: do i = 2,nx
 !	pst(:,i) = pst(:,1) - (i-1)*(10-7.5)*dx/0.5
-!end do psetloop
-pst(:,2)=9.0; pst(:,ny-1)=1.0
+	ust(:,i-1) = ust(:,1) - (i-1)*(2.0-1.8)*dx/0.5
+end do psetloop
+!pst(:,2)=9.0; pst(:,ny-1)=1.0
 !pst(2,:)=pst(1,:)-0.1
 !pst(4,:)=pst(5,:)-0.1
 !pst(3,:)=pst(2,:)-0.1
 !pst = po
-
 u = ust
 p = pst
 
@@ -73,17 +73,17 @@ au(1:nx,2:ny-1,3) = Dix(1:nx,2:ny-1) + max(Fxu(1:nx,2:ny-1),0.0)
 au(1:nx-1,1:ny-1,4) = Diy(1:nx-1,1:ny-1) + max(-Fyu(1:nx-1,1:ny-1),0.0)
 au(2:nx,1:ny-1,5) = Diy(1:nx-1,1:ny-1) + max(Fyu(1:nx-1,1:ny-1),0.0)
 
-au(2:nx-1,1:ny-1,1) = (au(2:nx-1,1:ny-1,2) + au(2:nx-1,1:ny-1,3) + au(2:nx-1,1:ny-1,4) + &
+au(2:nx-1,1:ny-1,1) = au(2:nx-1,1:ny-1,2) + au(2:nx-1,1:ny-1,3) + au(2:nx-1,1:ny-1,4) + &
 au(2:nx-1,1:ny-1,5) + Fxu(2:nx-1,2:ny) - Fxu(2:nx-1,1:ny-1) + Fyu(2:nx-1,1:ny-1) - &
-Fyu(1:nx-2,1:ny-1))/uru
+Fyu(1:nx-2,1:ny-1)
 
-au(1,1:ny-1,1) = (au(1,1:ny-1,2) + au(1,1:ny-1,3) + au(1,1:ny-1,4) + &
-au(1,1:ny-1,5) + Fxu(1,2:ny) - Fxu(1,1:ny-1))/uru! + Fyu(1,1:ny-1)/uru
-au(nx,1:ny-1,1) = (au(nx,1:ny-1,2) + au(nx,1:ny-1,3) + au(nx,1:ny-1,4) + &
-au(nx,1:ny-1,5) + Fxu(nx,2:ny) - Fxu(nx,1:ny-1))/uru! - Fyu(nx-1,1:ny-1)/uru
+au(1,1:ny-1,1) = au(1,1:ny-1,2) + au(1,1:ny-1,3) + au(1,1:ny-1,4) + &
+au(1,1:ny-1,5) + Fxu(1,2:ny) - Fxu(1,1:ny-1) + Fyu(1,1:ny-1)
+au(nx,1:ny-1,1) = au(nx,1:ny-1,2) + au(nx,1:ny-1,3) + au(nx,1:ny-1,4) + &
+au(nx,1:ny-1,5) + Fxu(nx,2:ny) - Fxu(nx,1:ny-1) - Fyu(nx-1,1:ny-1)
 
 au(:,1,:)=0.0
-au(1:nx,1,1) = (Fxu(1:nx,2) + 0.5*Fxu(1:nx,1))/uru
+au(1:nx,1,1) = Fxu(1:nx,2) + 0.5*Fxu(1:nx,1)
 
 
 bu = 0.0
@@ -99,7 +99,7 @@ abu = 0.0
 k=1
 do i=1,nx
 	do j=1,ny-1
-		umat(k,k) = au(i,j,1)
+		umat(k,k) = au(i,j,1)/uru
 		if(k>1) then
 		umat(k,k-1)=-au(i,j,3)
 		end if
@@ -130,11 +130,14 @@ do i = 1,nx
 	ust(i,1:ny-1) = bu(((i-1)*(ny-1)+1):(i)*(ny-1))
 enddo
 
-!print*, bu
+
 vst(:,ny) = vst(:,ny-1); vst(1,:)=0.0; vst(nx+1,:)=0.0
 
 Fxv(1:nx-1,1:ny-1) = rho*(ust(1:nx-1,1:ny-1)+ust(2:nx,1:ny-1))*arx(1,1)/2
+
 Fyv(1:nx,1:ny) = rho*(vst(1:nx,1:ny)+vst(2:nx+1,1:ny))*ary(1,1)/2
+!Fyv(1,1:ny) = rho*(vst(2,1:ny))*ary(1,1)
+!Fyv(nx,1:ny) = rho*(vst(nx-1,1:ny))*ary(1,1)
 
 Diy(:,:) = tau*ary(1,1)*nx/L
 
@@ -142,14 +145,17 @@ Sy(1:nx-1,1:ny-2) = (pst(1:nx-1,2:ny-1)-pst(2:nx,2:ny-1))*ary(1,1)
 
 ! v from 1 to nx+1; Set a from 2 to nx
 av(:,:,:) = 0.0
-av(1:nx-1,1:ny-3,2) = Dix(1:nx-1,2:ny-2) + max(-Fxv(1:nx-1,2:ny-2),0.0)
-av(1:nx-1,2:ny-2,3) = Dix(1:nx-1,2:ny-2) + max(Fxv(1:nx-1,2:ny-2),0.0)
-av(1:nx-2,1:ny-2,4) = Diy(1:nx-2,2:ny-1) + max(-Fyv(2:nx-1,2:ny-1),0.0)
-av(2:nx-1,1:ny-2,5) = Diy(2:nx-1,2:ny-1) + max(Fyv(2:nx-1,2:ny-1),0.0)
+av(1:nx-1,1:ny-2,2) = Dix(1:nx-1,2:ny-1) + max(-Fxv(1:nx-1,2:ny-1),0.0)
+av(1:nx-1,1:ny-2,3) = Dix(1:nx-1,1:ny-2) + max(Fxv(1:nx-1,1:ny-2),0.0)
+av(1:nx-1,1:ny-2,4) = Diy(1:nx-1,2:ny-1) + max(-Fyv(2:nx,2:ny-1),0.0)
+av(1:nx-1,1:ny-2,5) = Diy(1:nx-1,2:ny-1) + max(Fyv(1:nx-1,2:ny-1),0.0)
 
-av(1:nx-1,1:ny-2,1) = (av(1:nx-1,1:ny-2,2) + av(1:nx-1,1:ny-2,3) + av(1:nx-1,1:ny-2,4) + &
+av(1:nx-1,1:ny-2,1) = av(1:nx-1,1:ny-2,2) + av(1:nx-1,1:ny-2,3) + av(1:nx-1,1:ny-2,4) + &
 av(1:nx-1,1:ny-2,5) + Fxv(1:nx-1,2:ny-1) - Fxv(1:nx-1,1:ny-2) + Fyv(2:nx,2:ny-1) - &
-Fyv(1:nx-1,2:ny-1))/uru
+Fyv(1:nx-1,2:ny-1)
+
+av(1:nx-1,ny-2,2) = 0.0; av(1:nx-1,1,3) = 0.0
+av(nx-1,1:ny-2,4) = 0.0; av(1,1:ny-2,5) = 0.0
 
 !av(1:nx-1,ny,1) = (av(1:nx-1,ny,2) + av(1:nx-1,ny,3) + av(1:nx-1,ny,4) + av(1:nx-1,ny,5) + &
 !Fyv(2:nx,ny) - Fyv(1:nx-1,ny))/uru !- Fxv(1:nx-1,ny-1)/uru
@@ -164,7 +170,7 @@ k=1
 vmat=0.0
 do i=1,nx-1
 	do j=1,ny-2
-		vmat(k,k) = av(i,j,1)
+		vmat(k,k) = av(i,j,1)/uru
 		if(k>1) then
 		vmat(k,k-1)=-av(i,j,3)
 		end if
@@ -192,7 +198,8 @@ vst(:,ny) = vst(:,ny-1); vst(1,:)=0.0; vst(nx+1,:)=0.0
 !vst=0.0
 !vst(2:3,:)=0.1
 !vst(3:5,:)=-0.1
-!print*, vst
+
+!print*, av(:,:,1)
 
 ploop: do iterp=1,1
 
@@ -201,11 +208,13 @@ du=0.0; dv=0.0; a(:,:,:)=0.0; bd=0.0; bp=0.0
 du(1:nx,1:ny-1) = arx(1,1)*uru/au(1:nx,1:ny-1,1)
 dv(1:nx-1,1:ny-2) = ary(1,1)*uru/av(1:nx-1,1:ny-2,1)
 
-a(1:nx,1:ny-3,2) = rho*arx(1,1)*du(1:nx,2:ny-2)
-a(1:nx,2:ny-2,3) = rho*arx(1,1)*du(1:nx,2:ny-2)
+a(1:nx,1:ny-2,2) = rho*arx(1,1)*du(1:nx,2:ny-1)
+a(1:nx,1:ny-2,3) = rho*arx(1,1)*du(1:nx,1:ny-2)
 a(1:nx-1,1:ny-2,4) = rho*ary(1,1)*dv(1:nx-1,1:ny-2)
 a(2:nx,1:ny-2,5) = rho*ary(1,1)*dv(1:nx-1,1:ny-2)
 a(1:nx,1:ny-2,1) = a(1:nx,1:ny-2,2) + a(1:nx,1:ny-2,3) + a(1:nx,1:ny-2,4) + a(1:nx,1:ny-2,5)
+
+a(1:nx,ny-2,2)=0.0; a(1:nx,1,3)=0.0
 
 !a(1:nx,1,1) = a(1:nx,1,1) + po*rho*arx(1,1)*du(1:nx,1)
 
@@ -238,13 +247,13 @@ do i=1,nx
 enddo
 
 do i=1,nx
-	bp(((i-1)*(ny-2)+1)) = -0.0
-	pmat(((i-1)*(ny-2)+1),:)=0.0
-	pmat(((i-1)*(ny-2)+1),((i-1)*(ny-2)+1))=1.0
+!	bp(((i-1)*(ny-2)+1)) = -0.0
+!	pmat(((i-1)*(ny-2)+1),:)=0.0
+!	pmat(((i-1)*(ny-2)+1),((i-1)*(ny-2)+1))=1.0
 
-	bp(((i)*(ny-2))) = -0.0
-	pmat(((i)*(ny-2)),:)=0.0
-	pmat(((i)*(ny-2)),((i)*(ny-2)))=1.0
+!	bp(((i)*(ny-2))) = -0.0
+!	pmat(((i)*(ny-2)),:)=0.0
+!	pmat(((i)*(ny-2)),((i)*(ny-2)))=1.0
 enddo
 
 !print*, bd(1:nx,1:ny-2)
@@ -259,8 +268,9 @@ enddo
 !200 format (' Computing Inverse mpmattrix ',/,/, &
 !' Mpmattrix pmat')
 !201 format (6f12.6)
-!202 format (/,' Inverse mpmattrix pmat^{-1}')
+!202 format (/,'pmat')
 
+!print*, bp
 
 info=0; nrhs=1
 call dgesv(np, nrhs, pmat, np, ipivp, bp, np, info)
@@ -273,22 +283,24 @@ enddo
 
 p = (1-urp)*pst + urp*(pcr+pst)
 p(:,1)=po; p(:,ny)=0.0
-p(1,:)=p(2,:); p(nx-1,:)=p(nx,:)
-!p(:,1) = p(:,1) - 0.5*rho*(u(:,1)**2)
+!p(1,:)=p(2,:); p(nx-1,:)=p(nx,:)
+!p(:,1) = po - 0.5*rho*(u(:,1)**2)
 
 u(:,1:ny-1) = (1-uru)*ust(:,1:ny-1) + uru*(ust(:,1:ny-1) + &
 du(:,1:ny-1)*(pcr(:,1:ny-1)-pcr(:,2:ny)))
+
 v(2:nx,2:ny-1) = (1-uru)*vst(2:nx,2:ny-1) + uru*(vst(2:nx,2:ny-1) + &
 dv(1:nx-1,1:ny-2)*(pcr(1:nx-1,2:ny-1)-pcr(2:nx,2:ny-1)))
+v(2:nx,ny) = v(2:nx,ny-1)
+!print*, u
+enddo ploop
+!print*, p
 
 print*, ust
-enddo ploop
-!print*, ust
-
-
-ust=u; vst=v; pst=p
 !print*, vst(1:nx,:)
-!print*, ust
+ust=u; vst=v; pst=p
+
+!print*, dv
 
 enddo iterloop
 

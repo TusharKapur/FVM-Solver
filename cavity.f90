@@ -6,8 +6,8 @@ implicit none
 ! nx: row (vert), ny: column (hor)
 
 double precision, parameter :: m_dot=1.0
-double precision, parameter :: rho=1.0, tau = 0.001794
-integer, parameter :: nx=10, ny=10, nu = (nx)*(ny-1), nv = (nx-1)*(ny), np = (nx)*(ny)
+double precision, parameter :: rho=1000.0, tau = 0.001794
+integer, parameter :: nx=20, ny=20, nu = (nx)*(ny-1), nv = (nx-1)*(ny), np = (nx)*(ny)
 double precision, parameter :: L=2.0, H = 2.0
 double precision, parameter :: dx = H/(ny-1), dy = L/(nx-1)
 double precision arx(nx,2*ny), ary(2*nx+1,ny), au(nx,ny-1,5), av(nx-1,ny,5), &
@@ -15,9 +15,9 @@ u(nx,ny+1), v(nx+1,ny), ust(nx,ny+1), vst(nx+1,ny), Fxu(nx,ny), Fyu(nx+1,ny-1), 
 Dix, Diy, Fxv(nx-1,ny+1), Fyv(nx,ny), ustar(nx,ny+1), vstar(nx+1,ny), &
 Sx(nx,ny-1), Sy(nx-1,ny), du(nx,ny-1), dv(nx-1,ny), &
 po, p(nx,ny), pcr(nx,ny), a(nx,ny,5), &
-pst(nx,ny), m_res(nx-1,ny-1), p_res(nx-1,ny-1), uru, urp, ua, &
+pst(nx,ny), m_res(nx-1,ny-1), p_res, uru, urp, ua, &
 xp(np), bd(nx,ny), bp(np), xu(nu), bu(nu), xv(nv), bv(nv), &
-umat(nu,nu), vmat(nv,nv), pmat(np,np), c(np,np)
+umat(nu,nu), vmat(nv,nv), pmat(np,np), c(np,np), psi(nx+1,ny+1)
 integer :: i, j, k, nt, time, nrhs, info, lda, ldb, n, iterp
 integer, dimension(nu) :: ipivu
 integer, dimension(nv) :: ipivv
@@ -27,7 +27,7 @@ time = 1
 arx = dx*1.0
 ary = dy*1.0
 ! U, V Initial conditions
-ua = 2.0
+ua = 0.00000002
 ust = 0.0; vst = 0.0
 
 ! P Initial conditions
@@ -36,7 +36,7 @@ po = 0.0; pst=0.0
 u = ust
 p = pst
 
-iterloop: do nt = 1,1000
+iterloop: do nt = 1,500
 
 vst(1,:)=0.0; vst(nx+1,:)=0.0; ust(:,1)=0.0; ust(:,ny+1)=0.0
 
@@ -164,7 +164,7 @@ a(1:nx-1,1:ny,4) = rho*ary(1,1)*dv(1:nx-1,1:ny)
 a(2:nx,1:ny,5) = rho*ary(1,1)*dv(1:nx-1,1:ny)
 a(1:nx,1:ny,1) = a(1:nx,1:ny,2) + a(1:nx,1:ny,3) + a(1:nx,1:ny,4) + a(1:nx,1:ny,5)
 
-a(1,1,1) = a(1,1,1) + (10**5)
+a(1,1,1) = a(1,1,1) + (10**30)
 
 bd(1:nx,1:ny) = rho*arx(1,1)*(ust(1:nx,1:ny)-ust(1:nx,2:ny+1)) + &
 rho*ary(1,1)*(vst(1:nx,1:ny)-vst(2:nx+1,1:ny))
@@ -172,7 +172,7 @@ rho*ary(1,1)*(vst(1:nx,1:ny)-vst(2:nx+1,1:ny))
 do i=1,nx
 	bp(((i-1)*(ny)+1):(i)*(ny)) = bd(i,1:ny)
 enddo
-bp(1) = bp(1) + (10**5)*po
+bp(1) = bp(1) + (10**30)*po
 
 k=1; pmat=0.0
 do i=1,nx
@@ -233,23 +233,31 @@ dv(1:nx-1,1:ny)*(pcr(1:nx-1,1:ny)-pcr(2:nx,1:ny)))
 enddo ploop
 !print*, p
 
-print*, ust
+!print*, ust
 !print*, vst(1:nx,:)
 ust=u; vst=v; pst=p
+
+p_res=0.0; m_res=0.0
+do i = 1,nx
+	do j = 1,ny
+		p_res = p_res + abs(rho*(arx(1,1)*(ust(i,j+1)-ust(i,j)) + &
+			ary(1,1)*(vst(i+1,j)-vst(i,j))))
+	enddo
+enddo
+print*, nt, p_res
 
 !print*, dv
 
 enddo iterloop
 
-open(1, file = 'data-u.dat', status = 'new')  
-do i=1,nx+1
-	write(1,*) vst(i,1:ny)   
-end do 
+psi=0.0
+psi(2:nx,2:ny) = (ust(1:nx-1,2:ny)+ust(2:nx,2:ny))*dx/2 - &
+	(vst(2:nx,1:ny-1)+vst(2:nx,2:ny))*dy/2
 
-open(1, file = 'data-v.dat', status = 'new')  
-do i=1,ny+1
-	write(1,*) ust(i,1:nx)
-end do 
+! open(1, file = 'data-pst-LU-30.txt', status = 'new')  
+! do i=1,nx
+! 	write(1,*) pst(i,1:ny)   
+! end do  
 
 
 end program cavity
