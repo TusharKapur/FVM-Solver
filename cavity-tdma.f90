@@ -1,4 +1,3 @@
-!1-D nozzle inviscid   #############  U INLET!  #######################33
 program cavity
 implicit none
 
