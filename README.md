@@ -15,7 +15,7 @@ sh run.sh
 
 ## Results
 
-The streamlines for different values of Reynold's number are as follows:
+The solution is post-processed using MATLAB. The streamlines for different values of Reynold's number are as follows:
 
 ![Streamlines](/pictures/stream.png)
 
