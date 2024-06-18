@@ -23,7 +23,7 @@ The code was validated against ANSYS Fluent. The profiles of horizontal and vert
 
 ![Validation](/pictures/val.png)
 
-The following figure shows the comparison of Gauss-Seidel and TDMA solvers:
+The following figure shows the comparison of LU Decomposition and TDMA solvers:
 
 ![Performance](/pictures/perf.png)
 
